@@ -282,10 +282,13 @@ final class MeetingRecordingController: ObservableObject {
 
     private func startElapsedTimer() {
         elapsedTimer?.invalidate()
-        elapsedTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             guard let self, let startedAt = self.startedAt else { return }
             self.elapsedSeconds = Date().timeIntervalSince(startedAt)
         }
+        // Common modes keep the clock ticking while the menu bar menu is open.
+        RunLoop.main.add(timer, forMode: .common)
+        elapsedTimer = timer
     }
 
     // MARK: - System Settings and Finder
