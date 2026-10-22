@@ -289,7 +289,7 @@ enum MeetingCoreTests {
         defer { defaults.removePersistentDomain(forName: suite) }
 
         let loaded = MeetingCaptureSelection.load(from: defaults)
-        TestSupport.expectEqual(loaded.source, .selectedApplications)
+        TestSupport.expectEqual(loaded.source, .allApplications)
         TestSupport.expectEqual(loaded.bundleIdentifiers, MeetingAppCatalog.defaultSelection)
         TestSupport.expect(loaded.isSelected(MeetingAppCatalog.zoom.bundleIdentifier), "Zoom must be selected by default")
         TestSupport.expect(!loaded.isSelected(MeetingAppCatalog.chrome.bundleIdentifier), "Browsers must be opt-in")
@@ -307,7 +307,7 @@ enum MeetingCoreTests {
         TestSupport.expect(!reloaded.isSelected(MeetingAppCatalog.slack.bundleIdentifier), "Deselected apps must stay deselected")
 
         defaults.set("not-a-source", forKey: MeetingCaptureSelection.sourceStorageKey)
-        TestSupport.expect(MeetingCaptureSelection.load(from: defaults).source == .selectedApplications, "Unknown sources fall back to the default")
+        TestSupport.expect(MeetingCaptureSelection.load(from: defaults).source == .allApplications, "Unknown sources fall back to the default")
     }
 
     private static func testProcessMatcherOwnership() {

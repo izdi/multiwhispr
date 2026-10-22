@@ -62,7 +62,7 @@ struct MeetingCaptureSelection: Equatable {
     var source: MeetingAudioSource
     var bundleIdentifiers: Set<String>
 
-    init(source: MeetingAudioSource = .selectedApplications, bundleIdentifiers: Set<String> = MeetingAppCatalog.defaultSelection) {
+    init(source: MeetingAudioSource = .allApplications, bundleIdentifiers: Set<String> = MeetingAppCatalog.defaultSelection) {
         self.source = source
         self.bundleIdentifiers = Self.normalized(bundleIdentifiers)
     }
