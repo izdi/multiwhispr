@@ -41,6 +41,10 @@ final class MeetingRecordingController: ObservableObject {
     @Published private(set) var lastResult: MeetingRecordingResult?
     @Published private(set) var runningApplications: [MeetingRunningApplication] = []
     @Published private(set) var selection: MeetingCaptureSelection
+    /// macOS offers no API to query System Audio Recording; this is set once
+    /// a recording has received non-silent audio from other apps.
+    @Published private(set) var systemAudioConfirmed: Bool
+    static let systemAudioConfirmedKey = "system_audio_recording_confirmed"
 
     private let recorder = MeetingRecorder()
     private let defaults: UserDefaults
@@ -50,6 +54,7 @@ final class MeetingRecordingController: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         selection = MeetingCaptureSelection.load(from: defaults)
+        systemAudioConfirmed = defaults.bool(forKey: Self.systemAudioConfirmedKey)
 
         recorder.onLevels = { [weak self] me, others in
             guard let self, self.isRecording else { return }
@@ -58,6 +63,14 @@ final class MeetingRecordingController: ObservableObject {
         }
         recorder.onFailure = { [weak self] error, partialResult in
             self?.handleFailure(error, partialResult: partialResult)
+        }
+        recorder.onApplicationAudioConfirmed = { [weak self] in
+            guard let self else { return }
+            self.systemAudioConfirmed = true
+            self.defaults.set(true, forKey: Self.systemAudioConfirmedKey)
+            if self.errorMessage?.hasPrefix("No audio from other apps") == true {
+                self.errorMessage = nil
+            }
         }
         recorder.onApplicationAudioSilent = { [weak self] in
             guard let self, self.isRecording else { return }

@@ -112,6 +112,7 @@ final class MeetingRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDeleg
         var acceptsAudio = true
         var finalized = false
         var receivedApplicationAudio = false
+        var confirmedApplicationAudio = false
 
         init(
             folderURL: URL,
@@ -152,6 +153,9 @@ final class MeetingRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDeleg
     /// Delivered on the main queue when the other-participants source has
     /// delivered nothing for `applicationAudioTimeout` seconds after start.
     var onApplicationAudioSilent: (() -> Void)?
+    /// Delivered on the main queue the first time non-silent audio arrives from
+    /// other apps, which proves System Audio Recording is granted.
+    var onApplicationAudioConfirmed: (() -> Void)?
     private static let applicationAudioTimeout: TimeInterval = 5
 
     var isRecording: Bool {
@@ -273,6 +277,10 @@ final class MeetingRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDeleg
                 guard let active, self.session === active, active.acceptsAudio else { return }
                 let timestamp = hostTime.map { self.timelineSeconds(hostTime: $0, timelineStart: active.timelineStart) } ?? nil
                 active.aligner.appendSecondary(samples, at: timestamp)
+                if !active.confirmedApplicationAudio, samples.contains(where: { $0 != 0 }) {
+                    active.confirmedApplicationAudio = true
+                    DispatchQueue.main.async { self.onApplicationAudioConfirmed?() }
+                }
             }
         }
         tap.onFailure = { [weak self, weak active] error in

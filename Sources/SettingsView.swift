@@ -271,14 +271,21 @@ struct SettingsView: View {
                 Image(systemName: "speaker.wave.2.fill").frame(width: 20).foregroundStyle(.blue)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("System Audio Recording")
-                    Text("If Others stays silent, enable \(AppName.displayName) under System Settings › Privacy & Security › Screen & System Audio Recording › System Audio Recording Only.")
+                    Text(meetingRecording.systemAudioConfirmed
+                         ? "Confirmed by a recording that received audio from other apps. macOS does not let apps query this permission directly."
+                         : "macOS asks the first time you start a recording and does not let apps check the answer. If Others stays silent, enable \(AppName.displayName) under System Settings › Privacy & Security › Screen & System Audio Recording › System Audio Recording Only.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
-                Button("Open System Settings") { meetingRecording.openSystemAudioRecordingSettings() }
-                    .font(.caption)
+                if meetingRecording.systemAudioConfirmed {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                    Text("Granted").font(.caption).foregroundStyle(.green)
+                } else {
+                    Button("Open System Settings") { meetingRecording.openSystemAudioRecordingSettings() }
+                        .font(.caption)
+                }
             }
             .padding(10)
             .background(Color(nsColor: .controlBackgroundColor))
