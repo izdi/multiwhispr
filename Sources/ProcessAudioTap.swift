@@ -118,6 +118,8 @@ final class ProcessAudioTap: ApplicationAudioCapturing {
     var onAudio: (([Int16], CMTime?) -> Void)?
     /// Delivered on an arbitrary queue when the tap cannot continue.
     var onFailure: ((Error) -> Void)?
+    /// Delivered on the IO queue when the capture device delivers its first buffer.
+    var onFirstBuffer: (() -> Void)?
 
     var capturedBundleIdentifiers: Set<String> {
         capturedLock.withLock { $0 }
@@ -277,7 +279,9 @@ final class ProcessAudioTap: ApplicationAudioCapturing {
             kAudioAggregateDeviceUIDKey: UUID().uuidString,
             kAudioAggregateDeviceIsPrivateKey: true,
             kAudioAggregateDeviceIsStackedKey: false,
-            kAudioAggregateDeviceTapAutoStartKey: true,
+            // Run from the start so silence is delivered when nothing plays;
+            // waiting for the first tapped audio hides a denied permission.
+            kAudioAggregateDeviceTapAutoStartKey: false,
             kAudioAggregateDeviceTapListKey: [
                 [
                     kAudioSubTapDriftCompensationKey: true,
@@ -534,6 +538,7 @@ final class ProcessAudioTap: ApplicationAudioCapturing {
 
         let layout = IOLayout(generation: generation, format: format, bufferRange: range, bytesPerFrame: bytesPerFrame)
         ioLayout = layout
+        onFirstBuffer?()
         rateCheck = RateCheck(generation: generation)
         return layout
     }

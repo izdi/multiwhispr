@@ -111,6 +111,7 @@ final class MeetingRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDeleg
         var writtenFrames = 0
         var acceptsAudio = true
         var finalized = false
+        var receivedApplicationAudio = false
 
         init(
             folderURL: URL,
@@ -148,6 +149,10 @@ final class MeetingRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDeleg
     var onFailure: ((Error, MeetingRecordingResult?) -> Void)?
     /// Delivered on the main queue with display levels for (me, others).
     var onLevels: ((Float, Float) -> Void)?
+    /// Delivered on the main queue when the other-participants source has
+    /// delivered nothing for `applicationAudioTimeout` seconds after start.
+    var onApplicationAudioSilent: (() -> Void)?
+    private static let applicationAudioTimeout: TimeInterval = 5
 
     var isRecording: Bool {
         queue.sync { session != nil }
@@ -227,6 +232,11 @@ final class MeetingRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDeleg
 
         session = active
         startDrainTimer(for: active)
+        queue.asyncAfter(deadline: .now() + Self.applicationAudioTimeout) { [weak self, weak active] in
+            guard let self, let active, self.session === active, !active.receivedApplicationAudio else { return }
+            os_log(.error, log: meetingLog, "no application audio after %.0fs; permission may be missing", Self.applicationAudioTimeout)
+            DispatchQueue.main.async { self.onApplicationAudioSilent?() }
+        }
         os_log(.info, log: meetingLog, "meeting recording started")
         completion(.success(()))
     }
@@ -248,6 +258,15 @@ final class MeetingRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDeleg
         }
 
         let tap = ProcessAudioTap(target: target)
+        tap.onFirstBuffer = { [weak self, weak active] in
+            self?.queue.async {
+                guard let active else { return }
+                if !active.receivedApplicationAudio {
+                    active.receivedApplicationAudio = true
+                    os_log(.info, log: meetingLog, "first application audio buffer received")
+                }
+            }
+        }
         tap.onAudio = { [weak self, weak active] samples, hostTime in
             guard let self else { return }
             self.queue.async {

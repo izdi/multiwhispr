@@ -59,6 +59,10 @@ final class MeetingRecordingController: ObservableObject {
         recorder.onFailure = { [weak self] error, partialResult in
             self?.handleFailure(error, partialResult: partialResult)
         }
+        recorder.onApplicationAudioSilent = { [weak self] in
+            guard let self, self.isRecording else { return }
+            self.errorMessage = "No audio from other apps yet. If something is playing, allow \(AppName.displayName) under System Settings › Privacy & Security › Screen & System Audio Recording › System Audio Recording Only, then restart the recording."
+        }
         terminationObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification,
             object: nil,
